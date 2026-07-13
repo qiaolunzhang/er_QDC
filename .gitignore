@@ -1,0 +1,21 @@
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Superseded result archives (rejected mapping versions; see PROGRESS_LOG)
+repro_qdc_scheduling/results/kl_old_balanced/
+repro_qdc_scheduling/results/kl_v2_maxfill/
+
+# Experiment run logs (regenerable)
+repro_qdc_scheduling/results/logs/
+
+# AMPL / solver temp
+*.nl
+*.sol
+bayesian_tmp_folder/
+
+# OS
+.DS_Store

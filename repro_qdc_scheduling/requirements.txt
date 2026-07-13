@@ -1,0 +1,7 @@
+numpy
+scipy
+networkx
+scikit-learn
+matplotlib
+mip          # python-mip (CBC bundled); Gurobi used automatically if licensed
+pytest
