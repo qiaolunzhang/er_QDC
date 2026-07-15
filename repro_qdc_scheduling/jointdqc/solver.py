@@ -158,6 +158,52 @@ class CongestSolver:
         return CongestResult(alloc, kcount, float("nan"),
                              ampl.get_objective("Admitted").value(), admitted, dt)
 
+    def _costface_ampl(self, circuits, fabric, nu_models):
+        ampl = AMPL(self._env)
+        ampl.set_option("solver", self.solver)
+        ampl.set_option("cplex_options",
+                        f"mipgap=0 timelimit={self.timelimit} mipemphasis=2 threads=3")
+        ampl.read(os.path.join(_MODEL_DIR, "jointdqc_costface.mod"))
+        self._load_common(ampl, circuits, fabric, nu_models)
+        return ampl
+
+    def costface_cmin(self, circuits, fabric, nu_models):
+        """Base-cost optimum Cmin at FULL admission (objective CostObj). None if infeasible."""
+        ampl = self._costface_ampl(circuits, fabric, nu_models)
+        ampl.get_parameter("Cbudget").set_values([1e12])   # cost cap slack
+        ampl.get_parameter("Dir").set_values([1])
+        ampl.eval("objective CostObj;")
+        t0 = time.perf_counter()
+        ampl.solve(verbose=False)
+        self.total_solve_time += time.perf_counter() - t0
+        self.n_solves += 1
+        if ampl.solve_result not in ("solved", "limit"):
+            return None
+        return ampl.get_variable("BaseCost").value()
+
+    def solve_costface(self, circuits: dict, fabric, nu_models,
+                       cbudget: float, direction: int = 1):
+        """Probe the base-cost-optimal FACE (objective FaceObj of jointdqc_costface.mod).
+
+        With full admission fixed, minimise (direction=+1) or maximise (direction=-1) the core
+        (cross-pod) BSM load subject to base_cost <= cbudget. Returns (core_load, base_cost,
+        feasible): the min/max core load achievable at essentially the base optimum is exactly
+        the congestion the base objective fails to control. mipemphasis=2, mipgap=0 so the
+        reported face extent is tight, not a solver artefact.
+        """
+        ampl = self._costface_ampl(circuits, fabric, nu_models)
+        ampl.get_parameter("Cbudget").set_values([cbudget])
+        ampl.get_parameter("Dir").set_values([direction])
+        ampl.eval("objective FaceObj;")
+        t0 = time.perf_counter()
+        ampl.solve(verbose=False)
+        self.total_solve_time += time.perf_counter() - t0
+        self.n_solves += 1
+        if ampl.solve_result not in ("solved", "limit"):
+            return float("nan"), float("nan"), False
+        return (ampl.get_variable("CoreLoad").value(),
+                ampl.get_variable("BaseCost").value(), True)
+
     def solve_lp(self, circuits: dict, fabric, nu_models, zeta: int) -> float:
         """LP relaxation -> certified lower bound on the peak utilisation t."""
         ampl = self._fresh(relax=True)
