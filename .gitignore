@@ -19,3 +19,6 @@ bayesian_tmp_folder/
 
 # OS
 .DS_Store
+
+# JointDQC experiment run logs (regenerable)
+repro_qdc_scheduling/jointdqc/logs/

@@ -59,15 +59,16 @@ class MilpSolver:
         # PROVE optimal: the optimum incumbent shows up in <45s even when the
         # bound needs 10+ min (both CPLEX and Gurobi). We accept the incumbent
         # at the time limit; threads=3 leaves headroom for parallel workers.
-        # mipstartvalue=1 makes CPLEX use the greedy warm start we set on r/y;
-        # without it the incumbent can leave a high-nu circuit (QFT) on an
-        # expensive cross-pod pair, inflating its JET by ~60%.
+        # The greedy warm start we set on r/y is used by CPLEX automatically
+        # (an incumbent hint); without it the solution can leave a high-nu
+        # circuit (QFT) on an expensive cross-pod pair, inflating its JET.
+        # NOTE: CPLEX 22.2 (AMPL driver) removed the old "mipstartvalue" key
+        # and errors out on it, so it is no longer passed here.
         # QDC_MILP_TIMELIMIT overrides the limit (pytket experiments only need
         # a good allocation, not proven-optimal, so run them at ~15 s).
         tl = os.environ.get("QDC_MILP_TIMELIMIT", "45")
         ampl.set_option("cplex_options",
-                        f"mipgap=0.01 timelimit={tl} mipemphasis=1 threads=3 "
-                        "mipstartvalue=1")
+                        f"mipgap=0.01 timelimit={tl} mipemphasis=1 threads=3")
         ampl.read(os.path.join(_MODEL_DIR, model_file))
         return ampl
 
